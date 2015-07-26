@@ -1,0 +1,6 @@
+duration:1.0;mem stats:false;sys mem stats:false
+module;test;tags;iterations;elapsed
+RulesTimingBench	running 10000 rules		1	4021830
+RulesTimingBench	running 10000 compiled rules		1000	1664360
+RulesTimingBench	running 100 rules		50	1795695
+RulesTimingBench	running 100 compiled rules		100000	1422642
