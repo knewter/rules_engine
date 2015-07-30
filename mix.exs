@@ -6,6 +6,7 @@ defmodule RulesEngine.Mixfile do
      version: "0.0.1",
      elixir: "~> 1.0",
      build_embedded: Mix.env == :prod,
+     consolidate_protocols: true,
      start_permanent: Mix.env == :prod,
      deps: deps]
   end

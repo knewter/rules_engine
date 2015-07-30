@@ -6,10 +6,6 @@ defmodule RulesEngine.Patient do
   defstruct [:bmi]
 end
 
-defmodule RulesEngine.RulesOutput do
-  defstruct guidances: []
-end
-
 defmodule RulesEngine.Guidance do
   defstruct [:diagnosis, :text]
 end
@@ -18,29 +14,39 @@ defmodule RulesEngine.Diagnosis do
   defstruct [:id]
 end
 
+defmodule RulesEngine.RulesOutput do
+  defstruct guidances: []
+
+  def into(original) do
+    {original, fn
+        source, {:cont, nil} -> source
+        source, {:cont, guidance=%RulesEngine.Guidance{}} ->
+          %__MODULE__{source | guidances: [guidance|source.guidances]}
+        source, :done -> source
+        source, :halt -> :ok
+      end
+    }
+  end
+end
+
+defimpl Collectable, for: RulesEngine.RulesOutput do
+  defdelegate into(original), to: RulesEngine.RulesOutput
+end
+
 defmodule RulesEngine do
   alias RulesEngine.Document
   alias RulesEngine.RulesOutput
   alias RulesEngine.Guidance
 
   def apply_rules(document=%Document{}, rules) do
-    apply_rules(document, rules, %RulesOutput{})
-  end
-  def apply_rules(document=%Document{}, [{mod, fun}|rest], rules_output) do
-    output = apply(mod, fun, [document])
-    case output do
-      nil -> apply_rules(document, rest, rules_output)
-      guidance = %Guidance{} ->
-        apply_rules(document, rest, %RulesOutput{rules_output|guidances: [guidance|rules_output.guidances]})
+    for rule <- rules, into: %RulesOutput{} do
+      case rule do
+        {mod, fun} ->
+          apply(mod, fun, [document])
+        rule ->
+          {output, _binding} = Code.eval_quoted(rule, [document: document, patient: document.patient], __ENV__)
+          output
+      end
     end
   end
-  def apply_rules(document=%Document{}, [rule|rest], rules_output) do
-    {output, _binding} = Code.eval_quoted(rule, [document: document, patient: document.patient], __ENV__)
-    case output do
-      nil -> apply_rules(document, rest, rules_output)
-      guidance = %Guidance{} ->
-        apply_rules(document, rest, %RulesOutput{rules_output|guidances: [guidance|rules_output.guidances]})
-    end
-  end
-  def apply_rules(_document, [], rules_output), do: rules_output
 end
